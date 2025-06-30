@@ -78,7 +78,7 @@ gemini_api_key = os.getenv("GEMINI_API_KEY")
 class Me:
     
     def __init__(self):
-        self.openai = OpenAI.Client()
+        self.openai = OpenAI(api_key=groq_api_key, base_url="https://api.groq.com/openai/v1")
         self.name = "Joaquin Papagianacopoulos"
         reader = PdfReader("me/cv.pdf")
         self.linkedin = ""
@@ -89,6 +89,20 @@ class Me:
         with open("me/summary.txt", "r", encoding="utf-8") as f:
             self.summary = f.read()
 
+    def clean_message(self, message):
+        """Limpia un mensaje para que solo contenga campos soportados por Groq"""
+        if isinstance(message, dict):
+            cleaned = {
+                "role": message["role"],
+                "content": message["content"]
+            }
+            # Mantener solo campos válidos si existen
+            valid_fields = ["name", "tool_calls", "tool_call_id"]
+            for field in valid_fields:
+                if field in message:
+                    cleaned[field] = message[field]
+            return cleaned
+        return message
 
     def handle_tool_call(self, tool_calls):
         results = []
@@ -102,28 +116,108 @@ class Me:
         return results
     
     def system_prompt(self):
-        system_prompt = f"You are acting as {self.name}. You are answering questions on {self.name}'s website, \
-particularly questions related to {self.name}'s career, background, skills and experience. \
-Your responsibility is to represent {self.name} for interactions on the website as faithfully as possible. \
-You are given a summary of {self.name}'s background and LinkedIn profile which you can use to answer questions. \
-Be professional and engaging, as if talking to a potential client or future employer who came across the website. \
-If you don't know the answer to any question, use your record_unknown_question tool to record the question that you couldn't answer, even if it's about something trivial or unrelated to career. \
-If the user is engaging in discussion, try to steer them towards getting in touch via email; ask for their email and record it using your record_user_details tool. "
+        system_prompt = f"""You are acting as {self.name}, a professional representing yourself on your personal website.
+
+## Your Role & Constraints:
+- You MUST ONLY use information from the provided Summary and LinkedIn Profile below
+- If information is NOT in these documents, you MUST use the record_unknown_question tool
+- Be professional, engaging, and authentic as if speaking to potential clients or employers
+- Guide conversations toward getting contact information using the record_user_details tool
+
+## Response Framework (Chain of Thought):
+Before responding, think through these steps:
+
+1. **Information Check**: Is the answer in my Summary or LinkedIn Profile?
+   - If YES: Extract the relevant information and formulate response
+   - If NO: Use record_unknown_question tool and acknowledge you don't have that information
+
+2. **Relevance Assessment**: Does this question relate to:
+   - Professional background/experience?
+   - Skills and expertise?
+   - Career history?
+   - Personal interests mentioned in my materials?
+
+3. **Response Strategy**: 
+   - Answer directly if information is available
+   - If partially available, answer what you can and note limitations
+   - If completely unavailable, record the question and suggest they contact directly
+
+4. **Engagement Opportunity**: 
+   - Is this a good moment to ask for their contact information?
+   - Are they showing genuine interest in collaboration/hiring?
+
+## Example Thought Process:
+User asks: "What programming languages do you know?"
+1. Check documents → Found: Python, JavaScript in LinkedIn Profile
+2. Relevant → Yes, directly professional
+3. Strategy → Answer with specific details from profile
+4. Engagement → If they seem interested, ask about their project needs
+
+User asks: "What's your favorite movie?"
+1. Check documents → Not found in Summary or LinkedIn
+2. Relevant → Personal but not in my materials  
+3. Strategy → Use record_unknown_question tool, explain limitation
+4. Engagement → Redirect to professional topics or ask for contact
+
+## Available Information:
+### Summary:
+{self.summary}
+
+### LinkedIn Profile:
+{self.linkedin}
+
+## Tools Available:
+- record_unknown_question: Use when you cannot answer from available information
+- record_user_details: Use when someone shows interest in connecting (ask for email)
+
+## Response Guidelines:
+- Always base answers ONLY on the provided Summary and LinkedIn Profile
+- Be conversational but professional
+- If uncertain about information accuracy, acknowledge the limitation
+- Actively look for opportunities to connect visitors with your actual contact
+- Never invent or assume information not in your documents
+
+Now, respond to the user while following this Chain of Thought process internally."""
 
         system_prompt += f"\n\n## Summary:\n{self.summary}\n\n## LinkedIn Profile:\n{self.linkedin}\n\n"
         system_prompt += f"With this context, please chat with the user, always staying in character as {self.name}."
         return system_prompt
     
     def chat(self, message, history):
-        messages = [{"role": "system", "content": self.system_prompt()}] + history + [{"role": "user", "content": message}]
+        # Convierte el historial de tuplas (user_message, assistant_message) a mensajes
+        messages = [{"role": "system", "content": self.system_prompt()}]
+        
+        for user_msg, assistant_msg in history:
+            messages.append({"role": "user", "content": user_msg})
+            if assistant_msg:  # Si hay respuesta del asistente
+                messages.append({"role": "assistant", "content": assistant_msg})
+        
+        messages.append({"role": "user", "content": message})
         done = False
         while not done:
             response = self.openai.chat.completions.create(model="llama3-8b-8192", messages=messages, tools=tools)
-            if response.choices[0].finish_reason=="tool_calls":
-                message = response.choices[0].message
-                tool_calls = message.tool_calls
+            if response.choices[0].finish_reason == "tool_calls":
+                message_obj = response.choices[0].message
+                tool_calls = message_obj.tool_calls
+                
+                # Convierte el mensaje del asistente a un diccionario limpio
+                assistant_message = {
+                    "role": "assistant",
+                    "content": message_obj.content,
+                    "tool_calls": [
+                        {
+                            "id": tc.id,
+                            "type": tc.type,
+                            "function": {
+                                "name": tc.function.name,
+                                "arguments": tc.function.arguments
+                            }
+                        } for tc in tool_calls
+                    ]
+                }
+                
                 results = self.handle_tool_call(tool_calls)
-                messages.append(message)
+                messages.append(assistant_message)
                 messages.extend(results)
             else:
                 done = True
@@ -132,5 +226,4 @@ If the user is engaging in discussion, try to steer them towards getting in touc
 
 if __name__ == "__main__":
     me = Me()
-    gr.ChatInterface(me.chat, type="messages").launch()
-    
+    gr.ChatInterface(me.chat).launch()  # Sin type="messages"

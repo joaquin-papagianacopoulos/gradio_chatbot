@@ -1,0 +1,46 @@
+🧠 Perfil
+Estudiante de Ciencia de Datos e Inteligencia Artificial, 19 años, en búsqueda de su primera oportunidad profesional. Alta motivación, formación técnica sólida y experiencia autodidacta en proyectos personales.
+
+🎓 Educación
+Tecnicatura en Ciencia de Datos e IA
+Instituto Tecnológico Beltrán (2025–2028)
+
+Academia de Inglés (2012–2023)
+Collins Institute, Bernal
+
+📜 Certificación
+Machine Learning – EducaciónIT (2024)
+Curso de 32 horas sobre aprendizaje supervisado/no supervisado, entrenamiento y evaluación de modelos.
+
+🛠️ Habilidades Técnicas
+Lenguajes y herramientas: Python, SQL, APIs, FAISS, LangChain, LangGraph, Groq, Embeddings, CrewAI, Pandas, NumPy, Scikit-learn, Streamlit, Git, GitHub.
+
+Cloud: Google Cloud Platform (BigQuery, Cloud Functions, Cloud Storage).
+
+Generación de PDFs: ReportLab.
+
+Enfoque en proyectos con IA, automatización y análisis de datos.
+
+🤝 Habilidades Blandas
+Pensamiento analítico y estructurado
+
+Comunicación efectiva (español e inglés)
+
+Trabajo en equipo (hackathons, proyectos colaborativos como servidores en FiveM)
+
+Adaptabilidad a nuevas tecnologías
+
+Gestión del tiempo
+
+Curiosidad y aprendizaje constante
+
+🌐 Idiomas
+Español: Nativo
+
+Inglés: Fluido
+
+🎯 Intereses
+IA en creatividad, toma de decisiones con datos, automatización en la nube, podcasts tech, desarrollo de proyectos paralelos, fitness, fútbol y videojuegos.
+
+
+
